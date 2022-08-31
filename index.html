@@ -1,0 +1,349 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN"
+"http://www.w3.org/TR/REC-html40/strict.dtd">
+
+<!--
+	TODO: fix inputs with negative in front of the number and multiple inputs
+-->
+
+<html>
+	<head>
+		<title>Calculator</title>
+		<style type="text/css">
+			#calculator {
+				font-family:Verdana, Geneva, Tahoma, sans-serif;
+				position:absolute;
+				top:200px;
+				left:200px;
+				width:200px;
+			}
+			#calc-header {
+				font-weight:bold;
+			}
+			#calcoutput {
+				text-align:right;
+				
+			}
+			.num,.cell,.calc {
+				text-align:center;
+				border-radius:3px;
+				padding:10px;
+				margin:50px;
+			}
+			.num {
+				background-color:#F1F3F4;
+			}
+			.cell {
+				background-color:#DADCE0;
+			}
+			.calc {
+				color:white;
+				background-color:#4285F4;
+			}
+		</style>
+
+		<script type="text/javascript">
+			// Contains Stack and Queue classes
+			function stack() {
+				this.arr = new Array();
+				this.push = stack_push;
+				this.pop = stack_pop;
+				this.top = stack_top;
+				this.empty = stack_empty;
+			}
+			function stack_push(x) {
+				this.arr.push(x);
+			}
+			function stack_pop(x) {
+				this.arr.pop(x);
+			}
+			function stack_top() {
+				return this.arr[this.arr.length - 1];
+			}
+			function stack_empty(x) {
+				return this.arr.length == 0;
+			}
+
+			function queue() {
+				this.arr = new Array();
+				this.push = queue_push;
+				this.pop = queue_pop;
+				this.front = queue_front;
+				this.empty = queue_empty;
+			}
+			function queue_push(x) {
+				/* Unshift adds one or more elements to the beginning of the array */
+				this.arr.push(x);
+			}
+			function queue_pop() {
+				/* Removes the first element of the array and returns the removed item */
+				this.arr.shift();
+			}
+			function queue_front() {
+				return this.arr[0];
+			}
+			function queue_empty() {
+				return this.arr.length == 0;
+			}
+
+			// Token class
+			function token(type, val) {
+				this.val = val;
+				if (type == 'v') {
+					var c = val[0];
+					if ((c >= 0) && (c <= 9)) {
+						this.type = 'n';
+					} else {
+						this.type = 'x';
+					}
+ 				} else {
+					this.type = type;
+				}
+			}
+
+			/* Implementation of the Shunting Yard Algorithm */
+
+			/* Evaluates a queue of postfix tokens and returns a number/undefined as answer! */
+			function evalPostfix(postfixque) {
+				var output = new stack();
+				while (!postfixque.empty()) {
+					var e = postfixque.front();
+					var cls = e.type;
+					switch (cls) {
+						case 'n':
+							output.push(e);
+							break;
+						case '+':
+							if (output.arr.length < 2)
+								return undefined;
+							var right = output.top();
+							output.pop();
+							var left = output.top();
+							output.pop();
+							output.push(new token('n', new Number(left.val) + new Number(right.val)));
+							break;
+						case '-':
+							if (output.arr.length < 2)
+								return undefined;
+							var right = output.top();
+							output.pop();
+							var left = output.top();
+							output.pop();
+							output.push(new token('n', new Number(left.val) - new Number(right.val)));
+							break;
+						case '*':
+							if (output.arr.length < 2)
+								return undefined;
+							var right = output.top();
+							output.pop();
+							var left = output.top();
+							output.pop();
+							output.push(new token('n', new Number(left.val) * new Number(right.val)));
+							break;
+						case '/':
+							if (output.arr.length < 2)
+								return undefined;
+							var right = output.top();
+							output.pop();
+							var left = output.top();
+							output.pop();
+							output.push(new token('n', new Number(left.val) / new Number(right.val)));
+							break;
+						case '^':
+							if (output.arr.length < 2)
+								return undefined;
+							var right = output.top();
+							output.pop();
+							var left = output.top();
+							output.pop();
+							
+							var num = Math.pow(new Number(left.val).valueOf(), new Number(right.val).valueOf());
+							output.push(new token('n', num));
+							break;
+						default:
+							break;
+					}
+					postfixque.pop();
+				}
+				if (output.arr.length > 1)
+					return undefined;
+				else
+					return output.arr[0].val.valueOf();
+			}
+
+			/* Takes in a infix queue array of tokens and returns a queue of postfix tokens */
+			function postfix(infix) {
+				var opst = new stack();
+				var postfixque = new queue();
+				while (!infix.empty()) {
+					var ele = infix.front();
+					var cls = ele.type;
+					switch (cls) {
+						case '(':
+							opst.push(ele);
+							break;
+						case ')':
+							while (!opst.empty()) {
+								var e = opst.top();
+								if (e.type == '(') {
+									opst.pop();
+									break;
+								} else {
+									postfixque.push(e);
+									opst.pop();
+								}
+							}
+							break;
+						case 'n':
+							postfixque.push(ele);
+							break;
+						case '+':
+						case '-':
+						case '*':
+						case '/':
+						case '^':
+							push_pop_until(opst, postfixque, cls);
+							opst.push(ele);
+							break;
+						default:
+							break;
+					}
+					infix.pop();
+				}
+				while (!opst.empty()) {
+					var e = opst.top();
+					postfixque.push(e);
+					opst.pop();
+				}
+				return postfixque;
+			}
+			function push_pop_until(opst, postfixque, precedence) {
+				while (!opst.empty()) {
+					var e = opst.top();
+					if (precedence > get_precedence(e.type))
+						break;
+					postfixque.push(e);
+					opst.pop();
+				}
+			}
+			function get_precedence(c) {
+				switch (c) {
+					case '(':
+						return 0;
+					case '+':
+					case '-':
+						return 1;
+					case '*':
+					case '/':
+						return 2;
+					case '^':
+						return 3;
+					default:
+						return undefined;
+				}
+			}
+			/* 
+			 * Classifications: 'n', 'x', '+', '-', '*', '/'
+			 * Returns a queue full of tokens; Input = (String)
+			 */
+			function math_lexer(cont) {
+				var que = new queue();
+				var prev_index = 0;
+				for (i = 0; i < cont.length; i++) {
+					var c = cont[i];
+					switch (c) {
+						case '\t':
+						case ' ':
+							var str = cont.substring(prev_index, i);
+							if (str.length > 0) {
+								var char = str[0];
+								if ((char >= 0 && char <= 9) &&
+									(que.arr.length == 1) &&
+									(que.arr[0].type == '-'))
+									que.arr[0] = new token('n', '-' + str);
+								else
+									que.push(new token('v', str));
+							}
+							prev_index = i + 1;
+							break;
+						case '(':
+						case ')':
+						case '+':
+						case '-':
+						case '*':
+						case '/':
+						case '^':
+							var str = cont.substring(prev_index, i);
+							if (str.length > 0) {
+								var char = str[0];
+								if ((char >= 0 && char <= 9) &&
+									(que.arr.length == 1) &&
+									(que.arr[0].type == '-'))
+									que.arr[0] = new token('n', '-' + str);
+								else
+									que.push(new token('v', str));
+							}
+							que.push(new token(c, c));
+							prev_index = i + 1;
+							break;
+						default:
+							break;
+					}
+				}
+				var last = cont.substring(prev_index);
+				if (last.length > 0)
+					que.push(new token('v', last));
+				return que;
+			}
+		</script>
+	</head>
+	<body>
+		<div id="calculator">
+			<span id="calc-header">Calculator</span>
+			<form name="input">
+				<input id="calcoutput" type="text" name="calcoutput" />
+			</form>
+			<table id="numpad">
+				<tr>
+					<td class="num" onClick="output(7)">7</td>
+					<td class="num" onClick="output(8)">8</td>
+					<td class="num" onClick="output(9)">9</td>
+					<td class="cell" onClick="output('*')">x</td>
+					<td class="cell" onClick="output('(')">(</td>
+				</tr>
+				<tr>
+					<td class="num" onClick="output(4)">4</td>
+					<td class="num" onClick="output(5)">5</td>
+					<td class="num" onClick="output(6)">6</td>
+					<td class="cell" onClick="output('-')">-</td>
+					<td class="cell" onClick="output(')')">)</td>
+				</tr>
+				<tr>
+					<td class="num" onClick="output(1)">1</td>
+					<td class="num" onClick="output(2)">2</td>
+					<td class="num" onClick="output(3)">3</td>
+					<td class="cell" onClick="output('+')">+</td>
+					<td class="cell" onClick="output('^')">^</td>
+				</tr>
+				<tr>
+					<td class="num" onClick="output(0)">0</td>
+					<td class="num" onClick="output('.')">.</td>
+					<td class="calc" colspan="3" onClick="calc()">=</td>
+				</tr>
+			</table>
+		</div>
+
+		<script type="text/javascript">
+			function output(x) {
+				document.input.calcoutput.value += ("" + x);
+			}
+			function calc() {
+				/* Shunting Yard Algorithm */
+				var infix = math_lexer(document.input.calcoutput.value);
+				var postfixque = postfix(infix);
+				var ans = evalPostfix(postfixque);
+				
+				document.input.calcoutput.value = ans;
+			}
+		</script>
+	</body>
+</html>
